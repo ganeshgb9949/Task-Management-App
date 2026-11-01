@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ABC Technologies - Task Management</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; }
+        h1 { color: #333; text-align: center; }
+        .board { display: flex; justify-content: space-around; margin-top: 20px; }
+        .column { background: #fff; width: 30%; padding: 15px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); min-height: 400px; }
+        .column h3 { border-bottom: 2px solid #ddd; padding-bottom: 8px; color: #007bff; }
+        .task-card { background: #e9ecef; padding: 10px; margin: 10px 0; border-radius: 5px; border-left: 5px solid #007bff; }
+        .form-container { text-align: center; margin-bottom: 20px; }
+        input, select, button { padding: 8px; margin: 5px; border-radius: 4px; border: 1px solid #ccc; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+
+    <h1>ABC Technologies Task Board</h1>
+
+    <div class="form-container">
+        <input type="text" id="taskTitle" placeholder="Enter new task...">
+        <select id="taskBranch">
+            <option value="Hyderabad">Hyderabad</option>
+            <option value="Bangalore">Bangalore</option>
+            <option value="Chennai">Chennai</option>
+        </select>
+        <button onclick="createTask()">Add Task</button>
+    </div>
+
+    <div class="board">
+        <div class="column" id="todo">
+            <h3>To Do</h3>
+            <div id="todo-tasks"></div>
+        </div>
+        <div class="column" id="inprogress">
+            <h3>In Progress</h3>
+            <div id="inprogress-tasks"></div>
+        </div>
+        <div class="column" id="done">
+            <h3>Done</h3>
+            <div id="done-tasks"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api/tasks';
+
+        async function fetchTasks() {
+            try {
+                const response = await fetch(API_URL);
+                const tasks = await response.json();
+                
+                document.getElementById('todo-tasks').innerHTML = '';
+                document.getElementById('inprogress-tasks').innerHTML = '';
+                document.getElementById('done-tasks').innerHTML = '';
+
+                tasks.forEach(task => {
+                    const card = document.createElement('div');
+                    card.className = 'task-card';
+                    card.innerHTML = `<strong>${task.title}</strong><br><small>Branch: ${task.branch}</small><br>
+                        <button onclick="updateStatus(${task.id}, '${task.status}')">Move Next</button>`;
+
+                    if (task.status === 'To Do') {
+                        document.getElementById('todo-tasks').appendChild(card);
+                    } else if (task.status === 'In Progress') {
+                        document.getElementById('inprogress-tasks').appendChild(card);
+                    } else if (task.status === 'Done') {
+                        document.getElementById('done-tasks').appendChild(card);
+                    }
+                });
+            } catch (err) {
+                console.error("Error fetching tasks:", err);
+            }
+        }
+
+        async function createTask() {
+            const title = document.getElementById('taskTitle').value;
+            const branch = document.getElementById('taskBranch').value;
+            if (!title) return alert('Task title rayandi!');
+
+            await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, branch, status: 'To Do' })
+            });
+
+            document.getElementById('taskTitle').value = '';
+            fetchTasks();
+        }
+
+        async function updateStatus(id, currentStatus) {
+            let nextStatus = 'In Progress';
+            if (currentStatus === 'In Progress') nextStatus = 'Done';
+            if (currentStatus === 'Done') nextStatus = 'To Do';
+
+            await fetch(`${API_URL}/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: nextStatus })
+            });
+
+            fetchTasks();
+        }
+
+        // Initial load
+        fetchTasks();
+    </script>
+</body>
+</html>
